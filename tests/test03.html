@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>jQuery.Gantt - Test Suite 01</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge;chrome=IE8">
+    <link href="../css/style.css" type="text/css" rel="stylesheet">
+
+    <div class="gantt"></div>
+
+
+    <script src="../js/jquery.min.js"></script>
+    <script src="../js/jquery.fn.gantt.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
+    <script>
+        $(function() {
+
+            "use strict";
+
+            var today = moment();
+            var andTwoHours = moment().add(2, "hours");
+
+            var today_friendly = "/Date(" + today.valueOf() + ")/";
+            var next_friendly = "/Date(" + andTwoHours.valueOf() + ")/";
+
+            $(".gantt").gantt({
+                source: [{
+                    name: "Testing",
+                    desc: " ",
+                    values: [{
+                        from: today_friendly,
+                        to: next_friendly,
+                        label: "Test",
+                        customClass: "ganttRed",
+                        style: {
+                            "background-color": "aliceblue"
+                        }
+                    }]
+                }],
+                scale: "hours",
+                minScale: "hours",
+                navigate: "scroll"
+            });
+
+        });
+    </script>
+
+    </body>
+
+</html>
