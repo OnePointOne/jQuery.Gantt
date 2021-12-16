@@ -246,6 +246,7 @@
 
             // **Render the grid**
             render: function(element) {
+
                 var content = $('<div class="fn-content"/>');
                 var $leftPanel = core.leftPanel(element);
                 content.append($leftPanel);
@@ -1130,7 +1131,6 @@
                                     cFrom = from.data("offset");
                                     dl = Math.round((dTo - dFrom) / UTC_DAY_IN_MS) + 1;
                                     dp = 100 * (cellWidth * dl - 1) / dataPanelWidth;
-
                                     _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style);
 
                                     // find row
