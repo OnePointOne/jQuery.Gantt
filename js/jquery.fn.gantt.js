@@ -158,6 +158,7 @@
         //Default settings
         var settings = {
             source: [],
+            state: null,
             holidays: [],
             // paging
             itemsPerPage: 7,
@@ -176,13 +177,14 @@
             maxScale: "months",
             minScale: "hours",
             // callbacks
-            onItemClick: function(data) { return; },
+            onItemClick: function(elem, data, state) { return; },
             onAddClick: function(dt, rowId) { return; },
             onRender: $.noop
         };
 
         // read options
         $.extend(settings, options);
+        var state = !options.state ? { potato: 'tomato' } : options.state;
 
         // can't use cookie if don't have `$.cookie`
         settings.useCookie = settings.useCookie && $.isFunction($.cookie);
@@ -240,7 +242,7 @@
                 element.dateEnd = tools.getMaxDate(element);
 
 
-                /* core.render(element); */
+                // core.render(element);
                 core.waitToggle(element, function() { core.render(element); });
             },
 
@@ -279,11 +281,18 @@
                 }
 
                 // Scroll the grid to today's date
-                if (settings.scrollToToday) {
+                if (settings.scrollToToday && !state.date) {
                     core.navigateTo(element, 'now');
                     core.scrollPanel(element, 0);
-                    // or, scroll the grid to the left most date in the panel
+                } else if (state.date) {
+                    var page = Math.ceil(state.selected / settings.itemsPerPage);
+                    console.log('the page is');
+                    console.log(page);
+                    // core.navigateToPage(element, page);
+                    core.navigateTo(element, -state.date);
+                    core.scrollPanel(element, 0);
                 } else {
+                    // or, scroll the grid to the left most date in the panel
                     if (element.hPosition !== 0) {
                         if (element.scaleOldWidth) {
                             pLeft = ($dataPanel.width() - $rightPanel.width());
@@ -949,7 +958,18 @@
 
             // **Progress Bar**
             // Return an element representing a progress of position within the entire chart
-            createProgressBar: function(label, desc, classNames, dataObj, style) {
+
+            createProgressBar: function(label, desc, classNames, dataObj, style, i, offset) {
+                // documentation for createprogressbar:
+                // 
+                // `label` - text to display in the middle of the progress bar
+                // `desc` - tooltip description of the bar that shows upon hover
+                // `classNames` - css classes to apply to the bar
+                // `dataObj` - object with data to be used in displaying the bar
+                // `style` - css styles to apply to the bar
+                // `i` - index of the bar
+                // `offset` - offset of the bar from the left border of the chart
+
                 label = label || "";
                 var bar = $('<div class="bar"><div class="fn-label">' + label + '</div></div>')
                     .data("dataObj", dataObj);
@@ -973,12 +993,20 @@
                 if (classNames) {
                     bar.addClass(classNames);
                 }
+
+                if (state.selected == i) {
+                    $.extend(style, { 'outline': '3px solid #2fd123' });
+                }
+
                 if (style) {
                     bar.css(style);
                 }
+
                 bar.click(function(e) {
                     e.stopPropagation();
-                    settings.onItemClick($(this).data("dataObj"));
+                    state['selected'] = i;
+                    state['date'] = offset;
+                    settings.onItemClick($(this), $(this).data("dataObj"), state);
                 });
                 return bar;
             },
@@ -1042,8 +1070,7 @@
                                     cTo = to.data("offset");
                                     dl = Math.floor((cTo - cFrom) / cellWidth) + 1;
                                     dp = 100 * (cellWidth * dl - 1) / dataPanelWidth;
-
-                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style);
+                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style, i, cFrom);
 
                                     // find row
                                     topEl = $(element).find("#rowheader" + i);
@@ -1069,7 +1096,7 @@
                                     dl = Math.round((cTo - cFrom) / cellWidth) + 1;
                                     dp = 100 * (cellWidth * dl - 1) / dataPanelWidth;
 
-                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style);
+                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style, i, cFrom);
 
                                     // find row
                                     topEl = $(element).find("#rowheader" + i);
@@ -1107,7 +1134,7 @@
                                     dl = Math.round((cTo - cFrom) / cellWidth) + 1;
                                     dp = 100 * (cellWidth * dl - 1) / dataPanelWidth;
 
-                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style);
+                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style, i, cFrom);
 
                                     // find row
                                     topEl = $(element).find("#rowheader" + i);
@@ -1131,7 +1158,9 @@
                                     cFrom = from.data("offset");
                                     dl = Math.round((dTo - dFrom) / UTC_DAY_IN_MS) + 1;
                                     dp = 100 * (cellWidth * dl - 1) / dataPanelWidth;
-                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style);
+
+
+                                    _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style, i, dTo, cFrom);
 
                                     // find row
                                     topEl = $(element).find("#rowheader" + i);
@@ -1209,6 +1238,17 @@
                     (element.pageNum + val) < Math.ceil(element.rowsNum / settings.itemsPerPage)) {
                     core.waitToggle(element, function() {
                         element.pageNum += val;
+                        element.hPosition = $(".fn-gantt .dataPanel").css("left").replace("px", "");
+                        element.scaleOldWidth = false;
+                        core.init(element);
+                    });
+                }
+            },
+            navigateToPage: function(element, val) {
+                if ((val) >= 0 &&
+                    (val) < Math.ceil(element.rowsNum / settings.itemsPerPage)) {
+                    core.waitToggle(element, function() {
+                        element.pageNum = val;
                         element.hPosition = $(".fn-gantt .dataPanel").css("left").replace("px", "");
                         element.scaleOldWidth = false;
                         core.init(element);
@@ -1416,7 +1456,11 @@
                         element.loader = $('<div class="fn-gantt-loader">' +
                             '<div class="fn-gantt-loader-spinner"><span>' + settings.waitText + '</span></div></div>');
                     }
-                    $elt.append(element.loader);
+
+                    // disable loading screen
+                    //$elt.append(element.loader);
+
+
                     setTimeout(showCallback, 500);
 
                 } else if (element.loader) {
