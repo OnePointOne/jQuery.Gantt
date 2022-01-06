@@ -179,6 +179,7 @@
             // callbacks
             onItemClick: function(elem, data, state) { return; },
             onAddClick: function(dt, rowId) { return; },
+            onZoomClick: function(state) { return; },
             onRender: $.noop
         };
 
@@ -284,13 +285,27 @@
                 if (settings.scrollToToday && !state.date) {
                     core.navigateTo(element, 'now');
                     core.scrollPanel(element, 0);
-                } else if (state.date) {
-                    var page = Math.ceil(state.selected / settings.itemsPerPage);
-                    console.log('the page is');
-                    console.log(page);
-                    // core.navigateToPage(element, page);
-                    core.navigateTo(element, -state.date);
+                } else if (state.date && state.selected) {
+                    var page = Math.ceil(state.selected / settings.itemsPerPage) - 1;
+
+
+
+                    var from, to, cFrom, cTo, dFrom, dTo, dl, dp;
+                    // var cellWidth = tools.getCellSize();
+                    dFrom = tools.genId(tools.dateDeserialize(state.date), element.scaleStep);
+                    from = $(element).find('#dh-' + dFrom);
+                    dTo = tools.genId(tools.dateDeserialize(state.date), element.scaleStep);
+                    to = $(element).find('#dh-' + dTo);
+                    cFrom = from.data("offset");
+                    cTo = to.data("offset");
+                    
+                    core.navigateTo(element, -cFrom);
                     core.scrollPanel(element, 0);
+
+                    if (!state.page_rendered) {
+                        state.page_rendered = true;
+                        core.navigateToPage(element, state.page);
+                    }
                 } else {
                     // or, scroll the grid to the left most date in the panel
                     if (element.hPosition !== 0) {
@@ -793,6 +808,9 @@
                                 .append($('<button type="button" class="nav-link nav-page-back"/>')
                                     .html('&uarr;')
                                     .click(function() {
+                                        state.page_rendered = false;
+                                        state.selected = null;
+                                        state.date = null;
                                         core.navigatePage(element, -1);
                                     }))
                                 .append($('<div class="page-number"/>')
@@ -801,6 +819,9 @@
                                 .append($('<button type="button" class="nav-link nav-page-next"/>')
                                     .html('&darr;')
                                     .click(function() {
+                                        state.page_rendered = false;
+                                        state.selected = null;
+                                        state.date = null;
                                         core.navigatePage(element, 1);
                                     }))
                                 .append($('<button type="button" class="nav-link nav-now"/>')
@@ -1004,8 +1025,12 @@
 
                 bar.click(function(e) {
                     e.stopPropagation();
+                    var page = Math.ceil((i + 1) / settings.itemsPerPage) - 1;
+
                     state['selected'] = i;
                     state['date'] = offset;
+                    state['page'] = page;
+                    state['page_rendered'] = false;
                     settings.onItemClick($(this), $(this).data("dataObj"), state);
                 });
                 return bar;
@@ -1060,6 +1085,7 @@
                             var from, to, cFrom, cTo, dFrom, dTo, dl, dp;
                             var topEl, top;
                             switch (settings.scale) {
+
                                 // **Hourly data**
                                 case "hours":
                                     dFrom = tools.genId(tools.dateDeserialize(day.from), element.scaleStep);
@@ -1159,7 +1185,6 @@
                                     dl = Math.round((dTo - dFrom) / UTC_DAY_IN_MS) + 1;
                                     dp = 100 * (cellWidth * dl - 1) / dataPanelWidth;
 
-
                                     _bar = core.createProgressBar(day.label, day.desc, day.customClass, day.dataObj, day.style, i, dTo, cFrom);
 
                                     // find row
@@ -1238,6 +1263,7 @@
                     (element.pageNum + val) < Math.ceil(element.rowsNum / settings.itemsPerPage)) {
                     core.waitToggle(element, function() {
                         element.pageNum += val;
+                        state.page = element.pageNum;
                         element.hPosition = $(".fn-gantt .dataPanel").css("left").replace("px", "");
                         element.scaleOldWidth = false;
                         core.init(element);
@@ -1312,7 +1338,13 @@
                         // reset scrollPos
                         $.cookie(settings.cookieKey + "ScrollPos", null);
                     }
-                    core.init(element);
+
+                    state['scale'] = settings.scale;
+                    state['scaleStep'] = scaleSt;
+                    state['page_rendered'] = false;
+                    settings.onZoomClick(state); // re-renders because state is being updated in retool
+
+                    // core.init(element);
                 });
             },
 
@@ -1461,7 +1493,7 @@
                     //$elt.append(element.loader);
 
 
-                    setTimeout(showCallback, 500);
+                    setTimeout(showCallback, 10);
 
                 } else if (element.loader) {
                     element.loader.detach();
@@ -1725,14 +1757,23 @@
                 }
             }
 
+            if (state.scale) {
+                settings.scale = state.scale;
+            }
+
+            if (state.scaleStep) {
+                settings.scaleStep = state.scaleStep;
+            }
+
             switch (settings.scale) {
-                //case "hours":
+                // case "hours":
                 //    this.headerRows = 5;
                 //    this.scaleStep = 8;
                 //    break;
                 case "hours":
                     this.headerRows = 5;
-                    this.scaleStep = 1;
+                    // this.scaleStep = 1;
+                    this.scaleStep = settings.scaleStep;
                     break;
                 case "weeks":
                     this.headerRows = 3;
